@@ -1,0 +1,32 @@
+resource main()
+	const baguettes := 5
+	sem mutex[baguettes] := ([baguettes] 1)
+
+	fa i :=1 to baguettes ->
+        write("Philosopher", i, "think")
+    af
+
+    process p(i := 1 to baguettes-1)
+    do true ->
+        P(mutex[i])
+        P(mutex[1 + i mod 5])
+        write("Philosopher", i, "eat")
+        nap(int(random()*1000))
+        V(mutex[i])
+        V(mutex[1 + i mod 5])
+        write("Philosopher", i, "think")
+        od
+    end
+
+    process p5
+    do true ->
+        P(mutex[1])
+        P(mutex[5])
+        write("Philosopher", 5, "eat")
+        nap(int(random()*1000))
+        V(mutex[1])
+        V(mutex[5])
+        write("Philosopher", 5, "think")
+        od
+    end
+end
