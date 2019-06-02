@@ -9,5 +9,5 @@ Le message on doit le refaire en sr (pas en csp2sr)
 
 Barbier:
 	Semaphore: Complété
-	Moniteur: Pas commencé
+	Moniteur: Pas terminé
 	Message: Pas commencé

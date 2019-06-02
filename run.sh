@@ -1,3 +1,4 @@
 sr -v
-sr -o BarbierSemaphore BarbierSemaphore.sr
-./Compiled
+m2sr BarbierMoniteur.m
+sr -o BarbierMoniteur BarbierMoniteur.sr
+./BarbierMoniteur

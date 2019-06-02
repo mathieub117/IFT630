@@ -1,160 +1,175 @@
-resource main()
+global Variables
 	const NB_CHAISES := 2
 	const NB_CLIENTS_MAX := 4
 
-	#Temps maximum avant qu'un client retourne chez le barbier
-	const TEMPS_MAX_RETOUR := 15000
+	const TEMPS_MAX_RETOUR := 5000
 
-	#Prend 3 secondes pour entrer
 	const TEMPS_ENTRER := 3000
 
-	#Une coiffure prend 30 secondes à faire
 	const TEMPS_COIFFURE := 15000
 
-	#Le temps de déplacement chez le barbier est 5 secondes
 	const TEMPS_DEPLACEMENT := 5000
 
 	var nbClients: int := 0
 	var nbIteration: int
+end
 
-	sem seDeplace := 1
-	sem porteEntree := 1
-	sem porteSortie := 1
-	sem nbClient := 1
-	sem dormir := 0
-	sem clientSurChaise := 0
-	sem seFaireCoiffer := 0
-	sem attendreChaise := 0
-	sem clientSortit := 0
+_monitor(MoniteurBarbier)
+    import Variables
 
-	procedure TraiterClient ()
-		V(attendreChaise)		
-		P(clientSurChaise)
+    op TraiterClient()
+    op SeFaireCoiffer(i: int)
+    op AllerChezBarbier(i: int)
+    op StartBarbier()
+    op StartClients(i: int)
+    op Start()
 
-		#On coiffe le client
+_body(MoniteurBarbier)
+
+    _condvar(seDeplace)
+	_condvar(porteEntree)
+	_condvar(porteSortie)
+	_condvar(nbClient)
+	_condvar(dormir)
+	_condvar(clientSurChaise)
+	_condvar(seFaireCoiffer)
+	_condvar(attendreChaise)
+	_condvar(clientSortit)
+
+	_proc (TraiterClient())
+		_signal(attendreChaise)		
+		_wait(clientSurChaise)
+
 		write("Le barbier coiffe le client.")
-		nap(TEMPS_COIFFURE)
+		nap(Variables.TEMPS_COIFFURE)
 		write("La coiffure est terminé.")
 
-		#Sortir le client
 		write("Le barbier attend que personne se déplace.")
-		P(seDeplace)
+		_wait(seDeplace)
 		write("Le barbier marche jusqu'à la porte de sortie.")
-		nap(TEMPS_DEPLACEMENT)
-		V(seDeplace)
+		nap(Variables.TEMPS_DEPLACEMENT)
+		_signal(seDeplace)
 		write("Le barbier ouvre la porte pour que le client sorte.")
-		P(porteSortie)
-		V(seFaireCoiffer)
-		P(clientSortit)
-		V(porteSortie)
+		_wait(porteSortie)
+		_signal(seFaireCoiffer)
+		_wait(clientSortit)
+		_signal(porteSortie)
 
-		#Retourner à son poste de travail
 		write("Le barbier attend que personne se déplace.")
-		P(seDeplace)
+		_wait(seDeplace)
 		write("Le barbier retourne à son poste de travail.")
-		nap(TEMPS_DEPLACEMENT)
+		nap(Variables.TEMPS_DEPLACEMENT)
 		write("Le barbier est de retour à son poste de travail.")
-		V(seDeplace)
+		_signal(seDeplace)
 
-		P(nbClient)
+		_wait(nbClient)
 		nbClients--
-		V(nbClient)
-	end
+		_signal(nbClient)
+	_proc_end
 
-	procedure SeFaireCoiffer(i: int)
-		P(attendreChaise)
+	_proc (SeFaireCoiffer(i))
+		_wait(attendreChaise)
 		write("Le barbier fait signe au client", i, "de venir s'asseoir")
 		write("Client", i, "attend que personne ne se deplace.")
-		P(seDeplace)
+		_wait(seDeplace)
 		write("Client", i, "se dirige vers la chaise du barbier.")
-		nap(TEMPS_DEPLACEMENT)
-		V(seDeplace)
+		nap(Variables.TEMPS_DEPLACEMENT)
+		_signal(seDeplace)
 		write("Le client", i, "est assis sur la chaise du barbier.")
-		V(clientSurChaise)
-		P(seFaireCoiffer)
+		_signal(clientSurChaise)
+		_wait(seFaireCoiffer)
 		write("Client", i, "attend que personne ne se deplace.")
-		P(seDeplace)
+		_wait(seDeplace)
 		write("Client", i, "se dirige vers la porte de sortie.")
-		nap(TEMPS_DEPLACEMENT)
-		V(seDeplace)
-		nap(TEMPS_ENTRER)
-		V(clientSortit)
+		nap(Variables.TEMPS_DEPLACEMENT)
+		_signal(seDeplace)
+		nap(Variables.TEMPS_ENTRER)
+		_signal(clientSortit)
 		write("Client", i, "est sortie.")
-	end
+	_proc_end
 
-	procedure AllerChezBarbier(i: int)
-		P(porteEntree)
-		nap(TEMPS_ENTRER)
-		V(porteEntree)
+	_proc (AllerChezBarbier(i))
+		_wait(porteEntree)
+		nap(Variables.TEMPS_ENTRER)
+		_signal(porteEntree)
 		write("Client", i, "est entré.")
 
-		P(nbClient)
+		_wait(nbClient)
 		if nbClients = 0 ->
 			write("Client", i, "attend que personne ne se deplace.")
-			P(seDeplace)
+			_wait(seDeplace)
 			write("Client", i, "se dirige vers les chaises.")
-			nap(TEMPS_DEPLACEMENT)
-			V(seDeplace)
+			nap(Variables.TEMPS_DEPLACEMENT)
+			_signal(seDeplace)
 			write("Client", i, "prend une place.")
 			nbClients++
-			V(nbClient)
+			_signal(nbClient)
 			write("Le client réveille le barbier.")
-			V(dormir)
+			_signal(dormir)
 			call SeFaireCoiffer(i)	
 
 		[] nbClients != NB_CHAISES ->
 			write("Client", i, "attend que personne ne se deplace.")
-			P(seDeplace)
+			_wait(seDeplace)
 			write("Client", i, "se dirige vers les chaises.")
-			nap(TEMPS_DEPLACEMENT)
-			V(seDeplace)
+			nap(Variables.TEMPS_DEPLACEMENT)
+			_signal(seDeplace)
 			write("Client", i, "prend une place.")
 			nbClients++
-			V(nbClient)
+			_signal(nbClient)
 			call SeFaireCoiffer(i)
 
 		[] else ->
-			V(nbClient)
+			_signal(nbClient)
 			write("Il n'y a pas de place pour le client ", i, ".")
 			write("Client", i, "attend que personne ne se deplace.")
-			P(seDeplace)
+			_wait(seDeplace)
 			write("Client", i, "se dirige vers la porte de sortie.")
-			nap(TEMPS_DEPLACEMENT)
-			V(seDeplace)
+			nap(Variables.TEMPS_DEPLACEMENT)
+			_signal(seDeplace)
 			write("Client", i, "attend que personne n'utilise la porte.")
-			P(porteSortie)
-			nap(TEMPS_ENTRER)
-			V(porteSortie)
+			_wait(porteSortie)
+			nap(Variables.TEMPS_ENTRER)
+			_signal(porteSortie)
 			write("Client", i, "est sortie.")
 		fi
-	end
+	_proc_end
 
-	procedure StartBarbier()
+	_proc (StartBarbier())
 		do true ->
-			P(nbClient)
+			_wait(nbClient)
 			write("Le barbier regarde s'il y a des clients.")
 			if nbClients = 0 ->
-				V(nbClient)
+				_signal(nbClient)
 				write("Il n'y a pas de client, donc le barbier s'endort.")
-				P(dormir)
+				_wait(dormir)
 				call TraiterClient()
 			[] else ->
-				V(nbClient)
+				_signal(nbClient)
 				call TraiterClient()
 			fi
 		od
-	end
+	_proc_end
 
-	procedure StartClients(i: int)
+	_proc (StartClients(i))
 		read(nbIteration)
 		fa j := 1 to nbIteration ->
-			nap(int(random(TEMPS_MAX_RETOUR)))
+			nap(int(random(Variables.TEMPS_MAX_RETOUR)))
 			call AllerChezBarbier(i)
 		af
+	_proc_end
+
+	_proc (Start())
+		co
+			StartBarbier() // (i := 1 to variables.NB_CLIENTS_MAX) StartClients(i)
+		oc
+	_proc_end
+_monitor_end
+
+resource main()
+	import MoniteurBarbier
+
+	process p 
+		MoniteurBarbier.Start()
 	end
-
-	co
-		StartBarbier() // (i := 1 to NB_CLIENTS_MAX) StartClients(i)
-	oc
-
 end
