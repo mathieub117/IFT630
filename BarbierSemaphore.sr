@@ -1,0 +1,160 @@
+resource main()
+	const NB_CHAISES := 2
+	const NB_CLIENTS_MAX := 4
+
+	#Temps maximum avant qu'un client retourne chez le barbier
+	const TEMPS_MAX_RETOUR := 5000
+
+	#Prend 3 secondes pour entrer
+	const TEMPS_ENTRER := 3000
+
+	#Une coiffure prend 30 secondes à faire
+	const TEMPS_COIFFURE := 15000
+
+	#Le temps de déplacement chez le barbier est 5 secondes
+	const TEMPS_DEPLACEMENT := 5000
+
+	var nbClients: int := 0
+	var nbIteration: int
+
+	sem seDeplace := 1
+	sem porteEntree := 1
+	sem porteSortie := 1
+	sem nbClient := 1
+	sem dormir := 0
+	sem clientSurChaise := 0
+	sem seFaireCoiffer := 0
+	sem attendreChaise := 0
+	sem clientSortit := 0
+
+	procedure TraiterClient ()
+		V(attendreChaise)		
+		P(clientSurChaise)
+
+		#On coiffe le client
+		write("Le barbier coiffe le client.")
+		nap(TEMPS_COIFFURE)
+		write("La coiffure est terminé.")
+
+		#Sortir le client
+		write("Le barbier attend que personne se déplace.")
+		P(seDeplace)
+		write("Le barbier marche jusqu'à la porte de sortie.")
+		nap(TEMPS_DEPLACEMENT)
+		V(seDeplace)
+		write("Le barbier ouvre la porte pour que le client sorte.")
+		P(porteSortie)
+		V(seFaireCoiffer)
+		P(clientSortit)
+		V(porteSortie)
+
+		#Retourner à son poste de travail
+		write("Le barbier attend que personne se déplace.")
+		P(seDeplace)
+		write("Le barbier retourne à son poste de travail.")
+		nap(TEMPS_DEPLACEMENT)
+		write("Le barbier est de retour à son poste de travail.")
+		V(seDeplace)
+
+		P(nbClient)
+		nbClients--
+		V(nbClient)
+	end
+
+	procedure SeFaireCoiffer(i: int)
+		P(attendreChaise)
+		write("Le barbier fait signe au client", i, "de venir s'asseoir")
+		write("Client", i, "attend que personne ne se deplace.")
+		P(seDeplace)
+		write("Client", i, "se dirige vers la chaise du barbier.")
+		nap(TEMPS_DEPLACEMENT)
+		V(seDeplace)
+		write("Le client", i, "est assis sur la chaise du barbier.")
+		V(clientSurChaise)
+		P(seFaireCoiffer)
+		write("Client", i, "attend que personne ne se deplace.")
+		P(seDeplace)
+		write("Client", i, "se dirige vers la porte de sortie.")
+		nap(TEMPS_DEPLACEMENT)
+		V(seDeplace)
+		nap(TEMPS_ENTRER)
+		V(clientSortit)
+		write("Client", i, "est sortie.")
+	end
+
+	procedure AllerChezBarbier(i: int)
+		P(porteEntree)
+		nap(TEMPS_ENTRER)
+		V(porteEntree)
+		write("Client", i, "est entré.")
+
+		P(nbClient)
+		if nbClients = 0 ->
+			write("Client", i, "attend que personne ne se deplace.")
+			P(seDeplace)
+			write("Client", i, "se dirige vers les chaises.")
+			nap(TEMPS_DEPLACEMENT)
+			V(seDeplace)
+			write("Client", i, "prend une place.")
+			nbClients++
+			V(nbClient)
+			write("Le client réveille le barbier.")
+			V(dormir)
+			call SeFaireCoiffer(i)	
+
+		[] nbClients != NB_CHAISES ->
+			write("Client", i, "attend que personne ne se deplace.")
+			P(seDeplace)
+			write("Client", i, "se dirige vers les chaises.")
+			nap(TEMPS_DEPLACEMENT)
+			V(seDeplace)
+			write("Client", i, "prend une place.")
+			nbClients++
+			V(nbClient)
+			call SeFaireCoiffer(i)
+
+		[] else ->
+			V(nbClient)
+			write("Il n'y a pas de place pour le client ", i, ".")
+			write("Client", i, "attend que personne ne se deplace.")
+			P(seDeplace)
+			write("Client", i, "se dirige vers la porte de sortie.")
+			nap(TEMPS_DEPLACEMENT)
+			V(seDeplace)
+			write("Client", i, "attend que personne n'utilise la porte.")
+			P(porteSortie)
+			nap(TEMPS_ENTRER)
+			V(porteSortie)
+			write("Client", i, "est sortie.")
+		fi
+	end
+
+	procedure StartBarbier()
+		do true ->
+			P(nbClient)
+			write("Le barbier regarde s'il y a des clients.")
+			if nbClients = 0 ->
+				V(nbClient)
+				write("Il n'y a pas de client, donc le barbier s'endort.")
+				P(dormir)
+				call TraiterClient()
+			[] else ->
+				V(nbClient)
+				call TraiterClient()
+			fi
+		od
+	end
+
+	procedure StartClients(i: int)
+		read(nbIteration)
+		fa j := 1 to nbIteration ->
+			nap(TEMPS_MAX_RETOUR)
+			call AllerChezBarbier(i)
+		af
+	end
+
+	co
+		StartBarbier() // (i := 1 to NB_CLIENTS_MAX) StartClients(i)
+	oc
+
+end
