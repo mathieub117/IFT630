@@ -1,65 +1,32 @@
-global a
-    const nbPhilosophe := 5
-    var philosophes[nbPhilosophe]: int
-
-    op  init()
-body a
-    proc init()
-        fa i := 1 to nbPhilosophe ->
-            philosophes[i] := 0
-        af
-    end
-
-end
-
-_monitor(pMonitor)
-    import a
-    op pick(i:int), release(i:int)
-_body(pMonitor)
-    _condvar1(eat,a.nbPhilosophe)
-
-    _proc(pick(i))
-        if a.philosophes[i] != 0 ->
-              _wait(eat[i])
-          fi
-        a.philosophes[i] := 1;
-    _proc_end
-
-    _proc(release(i))
-       if a.philosophes[i] != 0 ->
-          a.philosophes[i] := 0
-          _signal(eat[i])
-          fi
-    _proc_end
-_monitor_end
-
-
 resource main()
-    import a
-    import pMonitor
-    a.init()
-    process ps(i:=1 to a.nbPhilosophe-1)
-        do true ->
-        pMonitor.pick(i)
-        pMonitor.pick(1+i mod 5)
-        write("Philosopher", i, "begin to eat")
-        nap(int(random())*100)
-        write("Philosopher", i, "finish to eat")
-        pMonitor.release(i)
-        pMonitor.release(1+i mod 5)
-        write("Philosopher", i, "Think")
+	const baguettes := 5
+	sem mutex[baguettes] := ([baguettes] 1)
+
+	fa i :=1 to baguettes ->
+        write("Philosopher", i, "think")
+    af
+
+    process p(i := 1 to baguettes-1)
+    do true ->
+        P(mutex[i])
+        P(mutex[1 + i mod 5])
+        write("Philosopher", i, "eat")
+        nap(int(random()*1000))
+        V(mutex[i])
+        V(mutex[1 + i mod 5])
+        write("Philosopher", i, "think")
         od
     end
-  process ps5
-        do true ->
-          pMonitor.pick(1)
-          pMonitor.pick(5)
-          write("Philosopher", 5, "begin to eat")
-          nap(int(random())*100)
-          write("Philosopher", 5, "finish to eat")
-          pMonitor.release(1)
-          pMonitor.release(5)
-          write("Philosopher", 5, "Think")
-          od
-  end
+
+    process p5
+    do true ->
+        P(mutex[1])
+        P(mutex[5])
+        write("Philosopher", 5, "eat")
+        nap(int(random()*1000))
+        V(mutex[1])
+        V(mutex[5])
+        write("Philosopher", 5, "think")
+        od
+    end
 end
