@@ -11,3 +11,8 @@ Barbier:
 	Semaphore: Complété
 	Moniteur: Presque terminé
 	Message: Pas terminé
+
+#3:
+	ParcSemaphore: complété (nap pour empecher un bug (a revoir?))
+	ParcMoniteur: complété
+	MatriceMessage: pas terminé
