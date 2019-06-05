@@ -18,14 +18,12 @@ resource main()
     import parc
 
     var personneDansVoiture := 0
-    var compteurOrdinal := 1
 
     process personne(i := 1 to parc.NOMBRE_PERSONNES)
 	do true ->
 	    P(parc.passager[1 + (i mod parc.NOMBRE_PASSAGERS_VOITURE)])
 	    personneDansVoiture++
-	    compteurOrdinal := i
-	    parc.AfficherPersonnePassager(i, 1+(i mod parc.NOMBRE_PASSAGERS_VOITURE))
+	    parc.AfficherPersonnePassager(i, personneDansVoiture)
 
 	    #Hack pour que les premiers ne se réexécute pas 2 fois de suite au 1er tour
 	    nap((parc.NOMBRE_TOURS_PISTE * parc.TEMPS_TOURS_PISTE) * parc.MULTIPLICATEUR)
