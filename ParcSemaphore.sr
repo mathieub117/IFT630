@@ -1,0 +1,64 @@
+global parc
+    const NOMBRE_TOURS_PISTE := 5
+    const TEMPS_TOURS_PISTE := 1000
+    const NOMBRE_PASSAGERS_VOITURE := 5
+    const MULTIPLICATEUR := 3
+    const NOMBRE_PERSONNES := NOMBRE_PASSAGERS_VOITURE * MULTIPLICATEUR
+
+    var PERSONNE_ATTEND:bool
+    var VOITURE_PLEINE:bool
+
+    sem passager[NOMBRE_PASSAGERS_VOITURE] := ([NOMBRE_PASSAGERS_VOITURE] 1)
+
+    #0 = Dans une voiture, 1 = En attente
+    sem personne[NOMBRE_PERSONNES] := ([NOMBRE_PERSONNES] 1)
+
+    op AfficherEtatVoiture(), AfficherPersonnePassager(i,j:int)
+body parc
+    proc AfficherEtatVoiture()
+	if VOITURE_PLEINE ->
+            write("La voiture est pleine")
+	[] else ->
+	    write("La voiture n'est pas pleine")
+	fi
+    end
+    proc AfficherPersonnePassager(i,j)
+        write("La Personne #",i, "A entré dans le siège #",j)
+    end
+end
+
+resource main()
+    import parc
+
+    var personneDansVoiture := 0
+    var compteurOrdinal := 1
+
+    process personne(i := 1 to parc.NOMBRE_PERSONNES)
+	do true ->
+	    P(parc.passager[1 + (i mod parc.NOMBRE_PASSAGERS_VOITURE)])
+	    P(parc.personne[i])
+	    personneDansVoiture++
+	    compteurOrdinal := i
+	    parc.AfficherPersonnePassager(i, 1+(i mod parc.NOMBRE_PASSAGERS_VOITURE))
+
+	    #Hack pour que les premiers ne se réexécute pas 2 fois de suite au 1er tour
+	    nap((parc.NOMBRE_TOURS_PISTE * parc.TEMPS_TOURS_PISTE) * parc.MULTIPLICATEUR)
+	od
+    end
+
+    process voiture
+        do true ->
+	    if personneDansVoiture >= parc.NOMBRE_PASSAGERS_VOITURE ->
+		fa tp := 1 to parc.NOMBRE_TOURS_PISTE ->
+                    nap(parc.TEMPS_TOURS_PISTE)
+	            write("Tour", tp)
+	        af
+	        fa i := 1 to parc.NOMBRE_PASSAGERS_VOITURE ->
+	            V(parc.personne[1 + ((compteurOrdinal - i) mod parc.NOMBRE_PERSONNES)])
+		    V(parc.passager[i])
+	        af
+		personneDansVoiture := 0
+	    fi
+        od
+    end
+end
