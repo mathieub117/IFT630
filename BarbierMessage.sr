@@ -13,22 +13,28 @@ global Variables
 end
 
 resource Queue
-    import Variables
-
+    op push(item: int)
+    op pop() returns s: int
+    op size() returns s: int
 body Queue(queueSize: int)
     var store[0:queueSize]: int 
     var index: int := 0
-    var size: int := 0
+    var numberOfElem: int := 0
+    var s: int
 
-    procedure push(item: int)
-        store[(index + size) mod queueSize] := item
-        size++
+    proc push(item)
+        store[(index + numberOfElem) mod queueSize] := item
+        numberOfElem++
     end
 
-    procedure pop(item: int)
-        item := store[index]
+    proc pop() returns s
+        s := store[index]
         index := (index + 1) mod queueSize
-        size--
+        numberOfElem--
+    end
+
+    proc size() returns s
+        s := numberOfElem
     end
 end Queue
 
@@ -38,8 +44,8 @@ resource main()
 
     op Increment(), Decrement(), GetNbClients(), NbClients(result: int), GetClientNumber(), ClientNumber(clientNumber: int), ClientSortit() 
     op GetnumberToServe(), NumberToServe(clientsServed: int), ProchainClient[100](), ClientSurChaise(), ReveillerBarbier(), Coiffer()
-    op OuvrirPorteAvant(id: int), FermerPorteAvant(), OuvrirPorteArriere(id: int), FermerPorteArriere(), UtiliserPorteAvant[NB_CLIENTS_MAX](), UtiliserPorteArriere[NB_CLIENTS_MAX]()
-    op SeDeplacer[NB_CLIENTS_MAX](), VouloirSeDeplacer(id: int), FinirDeSeDeplacer()
+    op OuvrirPorteAvant(id: int), FermerPorteAvant(), OuvrirPorteArriere(id: int), FermerPorteArriere(), UtiliserPorteAvant[NB_CLIENTS_MAX+1](), UtiliserPorteArriere[NB_CLIENTS_MAX+1]()
+    op SeDeplacer[NB_CLIENTS_MAX+1](), VouloirSeDeplacer(id: int), FinirDeSeDeplacer()
 
     procedure TraiterClient ()
         var prochainClientNumero: int
@@ -55,14 +61,14 @@ resource main()
 
         #Sortir le client
         write("Le barbier attend que personne se déplace.")
-        send VouloirSeDeplacer(0)
-        receive SeDeplacer[0]()
+        send VouloirSeDeplacer(1)
+        receive SeDeplacer[1]()
         write("Le barbier marche jusqu'à la porte de sortie.")
         nap(Variables.TEMPS_DEPLACEMENT)
         send FinirDeSeDeplacer()
         write("Le barbier ouvre la porte pour que le client sorte.")
-        send OuvrirPorteArriere(0)
-        receive UtiliserPorteArriere[0]()
+        send OuvrirPorteArriere(1)
+        receive UtiliserPorteArriere[1]()
 
         send Coiffer()
         receive ClientSortit()
@@ -71,8 +77,8 @@ resource main()
 
         #Retourner à son poste de travail
         write("Le barbier attend que personne se déplace.")
-        send VouloirSeDeplacer(0)
-        receive SeDeplacer[0]()
+        send VouloirSeDeplacer(1)
+        receive SeDeplacer[1]()
         write("Le barbier retourne à son poste de travail.")
         nap(Variables.TEMPS_DEPLACEMENT)
         write("Le barbier est de retour à son poste de travail.")
@@ -180,7 +186,7 @@ resource main()
     process StartClients(i := 1 to NB_CLIENTS_MAX)
         do true ->
             nap(int(random(Variables.TEMPS_MAX_RETOUR)))
-            call AllerChezBarbier(i)
+            call AllerChezBarbier(i + 1)
         od
     end
 
@@ -204,11 +210,11 @@ resource main()
 
     process Porte
         var queueAvant: cap Queue
-        queueAvant := create Queue(NB_CLIENTS_MAX)
+        queueAvant := create Queue(NB_CLIENTS_MAX+1)
         var porteAvantUtiliser: int := 0
         
         var queueArriere: cap Queue
-        queueArriere := create Queue(NB_CLIENTS_MAX)
+        queueArriere := create Queue(NB_CLIENTS_MAX+1)
         var porteArriereUtiliser: int := 0
         do true ->
             in OuvrirPorteAvant(id) -> 
@@ -219,11 +225,11 @@ resource main()
                     queueAvant.push(id)
                 fi
             [] FermerPorteAvant() ->
-                if queueAvant.size=0 ->
+                var size: int := queueAvant.size()
+                if size=0 ->
                     porteAvantUtiliser := 0
                 [] else ->
-                    var id: int
-                    queueAvant.pop(id)
+                    var id: int := queueAvant.pop()
                     send UtiliserPorteAvant[id]()
                 fi
             [] OuvrirPorteArriere(id) ->
@@ -234,11 +240,11 @@ resource main()
                     queueArriere.push(id)
                 fi
             [] FermerPorteArriere() ->
-                if queueArriere.size=0 ->
+                var size: int := queueArriere.size()
+                if size=0 ->
                     porteArriereUtiliser := 0
                 [] else ->
-                    var id: int
-                    queueArriere.pop(id)
+                    var id: int := queueArriere.pop()
                     send UtiliserPorteArriere[id]()
                 fi
             ni
@@ -247,7 +253,7 @@ resource main()
 
     process Deplacement
         var queue: cap Queue
-        queue := create Queue(NB_CLIENTS_MAX)
+        queue := create Queue(NB_CLIENTS_MAX+1)
         var deplacementUtiliser: int := 0
         do true ->
             in VouloirSeDeplacer(id) -> 
@@ -258,11 +264,11 @@ resource main()
                     queue.push(id)
                 fi
             [] FinirDeSeDeplacer() ->
-                if queue.size=0 ->
+                var size: int := queue.size()
+                if size=0 ->
                     deplacementUtiliser := 0
                 [] else ->
-                    var id: int
-                    queue.pop(id)
+                    var id: int := queue.pop()
                     send SeDeplacer[id]()
                 fi
             ni
