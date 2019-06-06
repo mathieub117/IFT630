@@ -20,57 +20,30 @@ _monitor(ClientNumberVar)
 	op IsBarberShopEmpty() returns bool
 	op IsBarberShopFull() returns bool
 _body(ClientNumberVar)
-	var ClientsNbvarUsed := 0
 	var nbClients: int := 0
 
-	_condvar(clients)
-
 	_proc(Decrement())
-		if ClientsNbvarUsed=1 ->
-			_wait(clients)
-		fi
-		ClientsNbvarUsed := 1
 		nbClients--
-		ClientsNbvarUsed := 0
-		_signal(clients)
 	_proc_end
 
 	_proc(Increment())
-		if ClientsNbvarUsed=1 ->
-			_wait(clients)
-		fi
-		ClientsNbvarUsed := 1
 		nbClients++
-		ClientsNbvarUsed := 0
-		_signal(clients)
 	_proc_end
 
 	_proc(IsBarberShopEmpty() returns result)
-		if ClientsNbvarUsed=1 ->
-			_wait(clients)
-		fi
-		ClientsNbvarUsed := 1
 		if nbClients=0 ->
 			result := true
 		[] else ->
 			result := false
 		fi
-		ClientsNbvarUsed := 0
-		_signal(clients)
 	_proc_end
 
 	_proc(IsBarberShopFull() returns result)
-		if ClientsNbvarUsed=1 ->
-			_wait(clients)
-		fi
-		ClientsNbvarUsed := 1
 		if nbClients=Variables.NB_CHAISES ->
 			result := true
 		[] else ->
 			result := false
 		fi
-		ClientsNbvarUsed := 0
-		_signal(clients)
 	_proc_end
 _monitor_end
 
@@ -263,14 +236,14 @@ resource main()
 		InteractionBarbierClients.ClientUtiliserPorteAvant(i)
 
 		if ClientNumberVar.IsBarberShopEmpty() ->
-			Deplacement.ClientVersChaises(i)
 			ClientNumberVar.Increment()
+			Deplacement.ClientVersChaises(i)
 			InteractionBarbierClients.ReveillerBarbier()
 			InteractionBarbierClients.SeFaireCoiffer(i)	
 
-		[] ClientNumberVar.IsBarberShopFull() ->
-			Deplacement.ClientVersChaises(i)
+		[] ClientNumberVar.IsBarberShopFull() != true ->
 			ClientNumberVar.Increment()
+			Deplacement.ClientVersChaises(i)
 			InteractionBarbierClients.SeFaireCoiffer(i)
 
 		[] else ->
@@ -286,6 +259,7 @@ resource main()
 			if ClientNumberVar.IsBarberShopEmpty() ->
 				InteractionBarbierClients.Dormir()
 			fi
+			nap(10)
 			InteractionBarbierClients.TraiterClient()
 		od
 	end
