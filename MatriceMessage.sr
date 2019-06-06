@@ -1,0 +1,59 @@
+global matrice
+    const TAILLE_MATRICE_M := 20
+    const TAILLE_MATRICE_N := 30
+    const TAILLE_MATRICE_P := 40
+
+    var MATRICE1[TAILLE_MATRICE_M,TAILLE_MATRICE_N] : int
+    var MATRICE2[TAILLE_MATRICE_N,TAILLE_MATRICE_P] : int
+
+    var MATRICE_RESULTANTE[TAILLE_MATRICE_M,TAILLE_MATRICE_P] : int
+
+    op RemplirMatrice()
+    op MultiplierMatrice(i,j:int)
+    op ResultatMatrice(v:int)
+body matrice
+    proc RemplirMatrice()
+	fa i := 1 to TAILLE_MATRICE_M, j:= 1 to TAILLE_MATRICE_N ->
+	    MATRICE1[i,j] := 1 + int(random()*99)
+	af
+	fa i := 1 to TAILLE_MATRICE_N, j:= 1 to TAILLE_MATRICE_P ->
+	    MATRICE2[i,j] := 1 + int(random()*99)
+	af
+    end
+
+    process multiplier
+	do true ->
+	    var i,j : int
+	    receive MultiplierMatrice(i,j)
+
+	    var valeur := 0
+
+	    fa k := 1 to TAILLE_MATRICE_N ->
+		valeur +:= MATRICE1[i,k] * MATRICE2[k,j]
+	    af
+
+	    send ResultatMatrice(valeur)
+	od
+    end
+end
+
+resource main()
+    import matrice
+    matrice.RemplirMatrice()
+
+    process workers(i := 1 to matrice.TAILLE_MATRICE_M, j := 1 to matrice.TAILLE_MATRICE_P)
+	var valeur := 0
+
+	send MultiplierMatrice(i,j)
+
+	#wait...
+	receive ResultatMatrice(valeur)
+	MATRICE_RESULTANTE[i,j] := valeur
+
+	write("Valeur [",i,",",j,"] = ",MATRICE_RESULTANTE[i,j])
+    end
+end
+
+    
+
+
