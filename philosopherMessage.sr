@@ -1,0 +1,38 @@
+global CS
+  const nbPhilosophe := 5
+  var philosophes[nbPhilosophe]: int
+  op CSenter(id:int) {call}, CSexit()
+  body CS
+    process arbitrator
+      do true ->
+        in CSenter(id) by id ->
+            write("process",id,"in")
+        ni
+      od
+      end
+    end
+
+    resource main()
+      import CS
+      process ps(i:= 1 to CS.nbPhilosophe -1)
+        do true->
+          call CSenter(i)
+          write("test")
+          call CSenter(1+i mod 5)
+          write("Philosopher", i, "eat")
+          nap(int(random()*1000))
+          write("Philosopher", i, "think")
+        od
+      end
+      process ps5
+      do true ->
+        call CSenter(1)
+        call CSenter(5)
+        write("Philosopher", 5, "eat")
+        nap(int(random()*1000))
+        send CSexit()
+        send CSexit()
+        write("Philosopher", 5, "eat")
+      od
+      end
+    end
