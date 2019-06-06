@@ -1,11 +1,11 @@
-global CS
+global philosophe
   const nbPhilosophe := 5
   var philosophes[nbPhilosophe] := ([nbPhilosophe] 0)
-  op CSenter(id:int), CSexit(id:int)
-  body CS
+  op PrendreBaguette(id:int), DeposerBaguette(id:int)
+  body philosophe
     process arbitrator
       do true ->
-        in CSenter(id) ->
+        in PrendreBaguette(id) ->
 		if philosophes[id] = 0 ->
 			if philosophes[1 + (id mod nbPhilosophe)] = 0 ->
 				philosophes[id] := 1
@@ -13,7 +13,7 @@ global CS
 		    		write("Philosophe",id,"Eat")
 			fi
 		fi
-	[] CSexit(id) ->
+	[] DeposerBaguette(id) ->
 		philosophes[id] := 0
 		philosophes[1 + (id mod nbPhilosophe)] := 0
 		write("Philosophe",id,"Think")
@@ -22,20 +22,23 @@ global CS
       end
     end
 
-    resource main()
-      import CS
-      process ps(i:= 1 to CS.nbPhilosophe -1)
+resource main()
+      import philosophe
+
+      process ps(i:= 1 to philosophe.nbPhilosophe -1)
         do true->
-          call CSenter(i)
+          call PrendreBaguette(i)
           nap(int(random()*1000))
-          call CSexit(i)
+          call DeposerBaguette(i)
         od
       end
+
       process ps5
       do true ->
-        call CSenter(5)
+        call PrendreBaguette(5)
         nap(int(random()*1000))
-	call CSexit(5)
+	call DeposerBaguette(5)
       od
       end
+
     end
