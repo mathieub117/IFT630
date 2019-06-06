@@ -133,10 +133,8 @@ _monitor(InteractionBarbierClients)
     op ReveillerBarbier()
     op TraiterClient()
     op SeFaireCoiffer(i: int)
-    op SortirClient()
     op ClientUtiliserPorteAvant(i: int)
 	op ClientUtiliserPorteArriere(i: int)
-	op BarbierUtiliserPorteArriere()
 _body(InteractionBarbierClients)
 
 	var porteSortieUtilise := 0
@@ -148,23 +146,27 @@ _body(InteractionBarbierClients)
 	_condvar(clientSurChaise)
 	_condvar(seFaireCoiffer)
 	_condvar(attendreChaise)
-	_condvar(clientSortit)
-
-	_proc(SortirClient())
-		_signal(seFaireCoiffer)
-		_wait(clientSortit)
-	_proc_end
 
 	_proc (TraiterClient())
 		_signal(attendreChaise)
-		_wait(clientSurChaise)
 
 		write("Le barbier coiffe le client.")
 		nap(Variables.TEMPS_COIFFURE)
 		write("La coiffure est terminé.")
 
 		Deplacement.BarbierVersLaSortie()
-		BarbierUtiliserPorteArriere()
+
+		write("Le barbier ouvre la porte pour que le client sorte.")
+		if porteSortieUtilise=1 ->
+			_wait(porteSortie)
+		fi
+		porteSortieUtilise := 1
+
+		_signal(seFaireCoiffer)
+
+		porteSortieUtilise := 0
+		_signal(porteSortie)
+
 		Deplacement.BarbierVersSonPoste()
 
 		ClientNumberVar.Decrement()
@@ -173,11 +175,9 @@ _body(InteractionBarbierClients)
 	_proc (SeFaireCoiffer(i))
 		_wait(attendreChaise)
 		Deplacement.ClientVersBarbier(i)
-		_signal(clientSurChaise)
 		_wait(seFaireCoiffer)
 		Deplacement.ClientVersLaSortie(i)
 		nap(Variables.TEMPS_ENTRER)
-		_signal(clientSortit)
 		write("Client", i, "est sortie.")
 	_proc_end
 
@@ -212,17 +212,6 @@ _body(InteractionBarbierClients)
 		porteEntreeUtilise := 0
 		_signal(porteEntree)
 		write("Client", i, "est entré.")
-	_proc_end
-
-	_proc(BarbierUtiliserPorteArriere())
-		write("Le barbier ouvre la porte pour que le client sorte.")
-		if porteSortieUtilise=1 ->
-			_wait(porteSortie)
-		fi
-		porteSortieUtilise := 1
-		InteractionBarbierClients.SortirClient()
-		porteSortieUtilise := 0
-		_signal(porteSortie)
 	_proc_end
 _monitor_end
 
