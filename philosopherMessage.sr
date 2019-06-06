@@ -30,8 +30,6 @@ global CS
         call CSenter(5)
         write("Philosopher", 5, "eat")
         nap(int(random()*1000))
-        send CSexit()
-        send CSexit()
         write("Philosopher", 5, "eat")
       od
       end
