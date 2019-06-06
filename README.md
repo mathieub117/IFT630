@@ -11,7 +11,7 @@ Samuel Paquette-Paré - 17 019 922
 #2:
 	Semaphore: Complété
 	Moniteur: Presque terminé
-	Message: Pas terminé
+	Message: Presque terminé
 
 #3:
 	ParcSemaphore: complété (nap pour empecher un bug (a revoir?))

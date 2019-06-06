@@ -1,0 +1,271 @@
+global Variables
+    const NB_CHAISES := 2
+
+    const NB_CLIENTS_MAX := 4
+
+    const TEMPS_MAX_RETOUR := 5000
+
+    const TEMPS_ENTRER := 3000
+
+    const TEMPS_COIFFURE := 15000
+
+    const TEMPS_DEPLACEMENT := 5000
+end
+
+resource Queue
+    import Variables
+
+body Queue(queueSize: int)
+    var store[0:queueSize]: int 
+    var index: int := 0
+    var size: int := 0
+
+    procedure push(item: int)
+        store[(index + size) mod queueSize] := item
+        size++
+    end
+
+    procedure pop(item: int)
+        item := store[index]
+        index := (index + 1) mod queueSize
+        size--
+    end
+end Queue
+
+resource main()
+    import Queue
+    import Variables
+
+    op Increment(), Decrement(), GetNbClients(), NbClients(result: int), GetClientNumber(), ClientNumber(clientNumber: int), ClientSortit() 
+    op GetnumberToServe(), NumberToServe(clientsServed: int), ProchainClient[100](), ClientSurChaise(), ReveillerBarbier(), Coiffer()
+    op OuvrirPorteAvant(id: int), FermerPorteAvant(), OuvrirPorteArriere(id: int), FermerPorteArriere(), UtiliserPorteAvant[NB_CLIENTS_MAX](), UtiliserPorteArriere[NB_CLIENTS_MAX]()
+    op SeDeplacer[NB_CLIENTS_MAX](), VouloirSeDeplacer(id: int), FinirDeSeDeplacer()
+
+    procedure TraiterClient ()
+        var prochainClientNumero: int
+        send GetnumberToServe()
+        receive NumberToServe(prochainClientNumero)
+        send ProchainClient[prochainClientNumero]()
+        receive ClientSurChaise()
+
+        #On coiffe le client
+        write("Le barbier coiffe le client.")
+        nap(Variables.TEMPS_COIFFURE)
+        write("La coiffure est terminé.")
+
+        #Sortir le client
+        write("Le barbier attend que personne se déplace.")
+        send VouloirSeDeplacer(0)
+        receive SeDeplacer[0]()
+        write("Le barbier marche jusqu'à la porte de sortie.")
+        nap(Variables.TEMPS_DEPLACEMENT)
+        send FinirDeSeDeplacer()
+        write("Le barbier ouvre la porte pour que le client sorte.")
+        send OuvrirPorteArriere(0)
+        receive UtiliserPorteArriere[0]()
+
+        send Coiffer()
+        receive ClientSortit()
+
+        send FermerPorteArriere()
+
+        #Retourner à son poste de travail
+        write("Le barbier attend que personne se déplace.")
+        send VouloirSeDeplacer(0)
+        receive SeDeplacer[0]()
+        write("Le barbier retourne à son poste de travail.")
+        nap(Variables.TEMPS_DEPLACEMENT)
+        write("Le barbier est de retour à son poste de travail.")
+        send FinirDeSeDeplacer()
+
+        send Decrement()
+    end
+
+    procedure SeFaireCoiffer(i: int)
+        var clientNumber: int
+        send GetClientNumber()
+        receive ClientNumber(clientNumber)
+        receive ProchainClient[clientNumber]()
+        write("Le barbier fait signe au client", i, "de venir s'asseoir")
+        write("Client", i, "attend que personne ne se deplace.")
+        
+        send VouloirSeDeplacer(i)
+        receive SeDeplacer[i]()
+        write("Client", i, "se dirige vers la chaise du barbier.")
+        nap(Variables.TEMPS_DEPLACEMENT)
+        send FinirDeSeDeplacer()
+        write("Le client", i, "est assis sur la chaise du barbier.")
+        
+        send ClientSurChaise()
+        receive Coiffer()
+        
+        write("Client", i, "attend que personne ne se deplace.")
+        send VouloirSeDeplacer(i)
+        receive SeDeplacer[i]()
+        write("Client", i, "se dirige vers la porte de sortie.")
+        nap(Variables.TEMPS_DEPLACEMENT)
+        send FinirDeSeDeplacer()
+        nap(Variables.TEMPS_ENTRER)
+
+        send ClientSortit()
+        write("Client", i, "est sortie.")
+    end
+
+    procedure AllerChezBarbier(i: int)
+        send OuvrirPorteAvant(i)
+        receive UtiliserPorteAvant[i]()
+        nap(Variables.TEMPS_ENTRER)
+        send FermerPorteAvant()
+        write("Client", i, "est entré.")
+
+        var result : int
+        send GetNbClients()
+        receive NbClients(result)
+
+        if result = 0 ->
+            send Increment()
+            write("Client", i, "attend que personne ne se deplace.")
+            send VouloirSeDeplacer(i)
+            receive SeDeplacer[i]()
+            write("Client", i, "se dirige vers les chaises.")
+            nap(Variables.TEMPS_DEPLACEMENT)
+            send FinirDeSeDeplacer()
+            write("Client", i, "prend une place.")
+            write("Le client réveille le barbier.")
+            send ReveillerBarbier()
+            call SeFaireCoiffer(i)  
+
+        [] result != Variables.NB_CHAISES ->
+            send Increment()
+            write("Client", i, "attend que personne ne se deplace.")
+            send VouloirSeDeplacer(i)
+            receive SeDeplacer[i]()
+            write("Client", i, "se dirige vers les chaises.")
+            nap(Variables.TEMPS_DEPLACEMENT)
+            send FinirDeSeDeplacer()
+            write("Client", i, "prend une place.")
+            call SeFaireCoiffer(i)
+
+        [] else ->
+            write("Il n'y a pas de place pour le client ", i, ".")
+            write("Client", i, "attend que personne ne se deplace.")
+            send VouloirSeDeplacer(i)
+            receive SeDeplacer[i]()
+            write("Client", i, "se dirige vers la porte de sortie.")
+            nap(Variables.TEMPS_DEPLACEMENT)
+            send FinirDeSeDeplacer()
+            write("Client", i, "attend que personne n'utilise la porte.")
+            send OuvrirPorteArriere(i)
+            receive UtiliserPorteArriere[i]()
+            nap(Variables.TEMPS_ENTRER)
+            send FermerPorteArriere()
+            write("Client", i, "est sortie.")
+        fi
+    end
+
+    process StartBarbier
+        do true ->
+            write("Le barbier regarde s'il y a des clients.")
+            var result : int 
+            send GetNbClients()
+            receive NbClients(result)
+            if result=0 ->
+                write("Il n'y a pas de client, donc le barbier s'endort.")
+                receive ReveillerBarbier()
+            fi
+            call TraiterClient()
+        od
+    end
+
+    process StartClients(i := 1 to NB_CLIENTS_MAX)
+        do true ->
+            nap(int(random(Variables.TEMPS_MAX_RETOUR)))
+            call AllerChezBarbier(i)
+        od
+    end
+
+    process GestionClients
+        var nbClients: int := 0
+        var clientNumber: int := 1
+        var clientsServed: int := 1
+        do true ->
+            in Increment() -> nbClients++
+            [] Decrement() -> nbClients--
+            [] GetNbClients() -> send NbClients(nbClients)
+            [] GetClientNumber() -> 
+                send ClientNumber(clientNumber)
+                clientNumber++
+            [] GetnumberToServe() -> 
+                send NumberToServe(clientsServed)
+                clientsServed++
+            ni
+        od
+    end
+
+    process Porte
+        var queueAvant: cap Queue
+        queueAvant := create Queue(NB_CLIENTS_MAX)
+        var porteAvantUtiliser: int := 0
+        
+        var queueArriere: cap Queue
+        queueArriere := create Queue(NB_CLIENTS_MAX)
+        var porteArriereUtiliser: int := 0
+        do true ->
+            in OuvrirPorteAvant(id) -> 
+                if porteAvantUtiliser=0 -> 
+                    send UtiliserPorteAvant[id]()
+                    porteAvantUtiliser := 1
+                [] else -> 
+                    queueAvant.push(id)
+                fi
+            [] FermerPorteAvant() ->
+                if queueAvant.size=0 ->
+                    porteAvantUtiliser := 0
+                [] else ->
+                    var id: int
+                    queueAvant.pop(id)
+                    send UtiliserPorteAvant[id]()
+                fi
+            [] OuvrirPorteArriere(id) ->
+                if porteArriereUtiliser=0 -> 
+                    send UtiliserPorteArriere[id]()
+                    porteArriereUtiliser := 1
+                [] else -> 
+                    queueArriere.push(id)
+                fi
+            [] FermerPorteArriere() ->
+                if queueArriere.size=0 ->
+                    porteArriereUtiliser := 0
+                [] else ->
+                    var id: int
+                    queueArriere.pop(id)
+                    send UtiliserPorteArriere[id]()
+                fi
+            ni
+        od
+    end
+
+    process Deplacement
+        var queue: cap Queue
+        queue := create Queue(NB_CLIENTS_MAX)
+        var deplacementUtiliser: int := 0
+        do true ->
+            in VouloirSeDeplacer(id) -> 
+                if deplacementUtiliser=0 -> 
+                    send SeDeplacer[id]()
+                    deplacementUtiliser := 1
+                [] else -> 
+                    queue.push(id)
+                fi
+            [] FinirDeSeDeplacer() ->
+                if queue.size=0 ->
+                    deplacementUtiliser := 0
+                [] else ->
+                    var id: int
+                    queue.pop(id)
+                    send SeDeplacer[id]()
+                fi
+            ni
+        od 
+    end
+end

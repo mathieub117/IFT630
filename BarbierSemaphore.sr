@@ -129,7 +129,7 @@ resource main()
 		fi
 	end
 
-	procedure StartBarbier()
+	process StartBarbier
 		do true ->
 			P(nbClient)
 			write("Le barbier regarde s'il y a des clients.")
@@ -145,16 +145,12 @@ resource main()
 		od
 	end
 
-	procedure StartClients(i: int)
+	process Clients(i := 1 to NB_CLIENTS_MAX)
+		write("Entrer le nombre d'iteration:")
 		read(nbIteration)
 		fa j := 1 to nbIteration ->
 			nap(int(random(TEMPS_MAX_RETOUR)))
 			call AllerChezBarbier(i)
 		af
 	end
-
-	co
-		StartBarbier() // (i := 1 to NB_CLIENTS_MAX) StartClients(i)
-	oc
-
 end
