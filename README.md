@@ -2,6 +2,8 @@
 Processus Concurrent et Parrallelisme
 
 Samuel Paquette-Paré - 17 019 922
+Michael Veilleux - 17 062 900
+Mathieu Beaudoin - 17 088 376
 
 #1:
 	Semaphore: Complété
@@ -14,6 +16,6 @@ Samuel Paquette-Paré - 17 019 922
 	Message: Complété
 
 #3:
-	ParcSemaphore: complété (nap pour empecher un bug (a revoir?))
+	ParcSemaphore: complété
 	ParcMoniteur: complété
 	MatriceMessage: Complété
